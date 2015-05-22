@@ -1,0 +1,36 @@
+#!/bin/bash
+# Chequeamos las dependencias
+existencial=`which dhcpcd`
+
+if [ "$?" -ne 0 ]; then
+        echo "Command failed: aptitude update && aptitude -y install dhcpcd";
+        exit 1;
+fi
+
+# Setear Interfaz Externa
+ENET_IFACE="eth0"
+
+# Aislo la parte de la ip que debo cambiar para que me la renueve
+echo "calculando IP a Cambiar"
+IP_ACTUAL=`ifconfig $ENET_IFACE | egrep "inet addr" | cut -d : -f2 | cut -d \  -f1 | cut -d . -f1-4`
+# Obtengo las primeras tres partes del octeto
+ENET_IP_inicial=`ifconfig $ENET_IFACE | egrep "inet addr" | cut -d : -f2 | cut -d \  -f1 | cut -d . -f1-3`
+echo "Ip actual a cambiar: $IP_ACTUAL"
+# Aislo la ultima parte
+ENET_IP_final=`ifconfig $ENET_IFACE | egrep "inet addr" | cut -d : -f2 | cut -d \  -f1 | cut -d .  -f4`
+# Sumo un digito a esa parte para romper el p2p
+ENET_IP_final_MAS_1=`expr $ENET_IP_final + 1`
+# Rearmo el octeto con ese digito cambiado
+IP_ODIADA="$ENET_IP_inicial"."$ENET_IP_final_MAS_1"
+echo "cambiando IP"
+# Pido el cambio de ip con dhcpcd
+dhcpcd -k eth0 & sleep 2s && dhcpcd -r $IP_ODIADA -l 10000 $ENET_IFACE
+
+# # # OPCIONAL # # #
+# ifconfig eth0 mtu 1500
+#
+#sleep 3
+#sh /etc/network/if-up.d/iptables
+# # # # # # # # # # #
+
+exit 0
